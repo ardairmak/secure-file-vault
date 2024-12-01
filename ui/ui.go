@@ -3,16 +3,20 @@ package ui
 import (
 	"database/sql"
 	"fmt"
+	"image/color"
 	"path/filepath"
 	"secure-file-vault/db"
 	"secure-file-vault/vault"
+	"time"
 
 	"os"
 
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/app"
+	"fyne.io/fyne/v2/canvas"
 	"fyne.io/fyne/v2/container"
 	"fyne.io/fyne/v2/dialog"
+	"fyne.io/fyne/v2/layout"
 	"fyne.io/fyne/v2/widget"
 )
 
@@ -20,14 +24,43 @@ var currentVault *vault.Vault
 var vaultKey []byte
 
 func RunApp(dbPath string) {
-    myApp := app.New()
-    myWindow := myApp.NewWindow("Secure File Vault")
 
     dbConn, err := db.InitDB(dbPath)
     if err != nil {
         panic(fmt.Sprintf("Failed to initialize the database: %v", err))
     }
     defer dbConn.Close()
+
+    myApp := app.New()
+    myWindow := myApp.NewWindow("Secure File Vault")
+
+    iconPath := filepath.Join("/Users/ardairmak/school/cse439/secure-file-vault/assets/", "logo.png")
+    appIcon := canvas.NewImageFromFile(iconPath)
+    myApp.SetIcon(appIcon.Resource)
+
+    var frames []*canvas.Image
+    for i := 1; i <= 42; i++ {
+        framePath := filepath.Join("/Users/ardairmak/school/cse439/secure-file-vault/assets/gif/", fmt.Sprintf("frame_apngframe%d.png", i))
+        frame := canvas.NewImageFromFile(framePath)
+        frame.FillMode = canvas.ImageFillContain
+        frames = append(frames, frame)
+    }
+
+    animationContainer := container.NewStack(frames[0])
+    myWindow.SetContent(animationContainer)
+    myWindow.Resize(fyne.NewSize(900, 600))
+    myWindow.CenterOnScreen()
+    myWindow.Show()
+
+    go func() {
+        for _, frame := range frames {
+            animationContainer.Objects = []fyne.CanvasObject{frame}
+            animationContainer.Refresh()
+            time.Sleep(45 * time.Millisecond) // Adjust the delay as needed
+        }
+		// Set the main window content to the login/register screen
+		myWindow.SetContent(makeLoginScreen(dbConn, myWindow))        
+    }()
 
     err = db.CreateVaultTable(dbConn)
     if err != nil {
@@ -39,43 +72,40 @@ func RunApp(dbPath string) {
         panic(fmt.Sprintf("Failed to create users table: %v", err))
     }
 
-    myWindow.SetContent(makeLoginRegisterScreen(dbConn, myWindow))
-    myWindow.Resize(fyne.NewSize(400, 400))
-    myWindow.ShowAndRun()
-}
-
-func makeLoginRegisterScreen(dbConn *sql.DB, myWindow fyne.Window) fyne.CanvasObject {
-        loginButton := widget.NewButton("Login", func() {
-        myWindow.SetContent(makeLoginScreen(dbConn, myWindow))
-    })
-
-    registerButton := widget.NewButton("Register", func() {
-        myWindow.SetContent(makeRegisterScreen(dbConn, myWindow))
-    })
-
-    return container.NewVBox(
-        loginButton,
-        registerButton,
-    )
+    myApp.Run()
 }
 
 func makeLoginScreen(dbConn *sql.DB, myWindow fyne.Window) fyne.CanvasObject {
 
+    logo := canvas.NewImageFromFile("/Users/ardairmak/school/cse439/secure-file-vault/assets/logoText.png")
+    logo.SetMinSize(fyne.NewSize(300, 200))
+    logo.FillMode = canvas.ImageFillContain
+
     usernameEntry := widget.NewEntry()
-    usernameEntry.SetPlaceHolder("Enter username...")
+    usernameEntry.SetPlaceHolder("Username")
 
     passwordEntry := widget.NewPasswordEntry()
-    passwordEntry.SetPlaceHolder("Enter password...")
+    passwordEntry.SetPlaceHolder("Password")
 
     loginButton := widget.NewButton("Login", func() {
         username := usernameEntry.Text
         password := passwordEntry.Text
 
-        vaultPath, err := db.AuthenticateUser(dbConn,username,password)
+        vaultPath := filepath.Join("vaults", username, "vault.dat")
+
+        vaultPathFromDB, err := db.AuthenticateUser(dbConn,username,password)
         if err != nil {
             fyne.CurrentApp().SendNotification(&fyne.Notification{
                 Title: "Error",
                 Content: err.Error(),
+            })
+            return
+        }
+
+        if vaultPathFromDB != vaultPath {
+            fyne.CurrentApp().SendNotification(&fyne.Notification{
+                Title: "Error",
+                Content: "Invalid vault path",
             })
             return
         }
@@ -90,39 +120,66 @@ func makeLoginScreen(dbConn *sql.DB, myWindow fyne.Window) fyne.CanvasObject {
         }
         currentVault = vlt
         vaultKey = key
-        mainScreen := makeMainScreen(dbConn,myWindow,vaultPath)
+        mainScreen := makeMainScreen(dbConn,myWindow,vaultPath,username)
         myWindow.SetContent(mainScreen)
     })
+    loginButton.Resize(fyne.NewSize(200,40))
 
-    return container.NewVBox(
-        widget.NewLabel("Username"),
-        usernameEntry,
-        widget.NewLabel("Password"),
-        passwordEntry,
-        loginButton,
-        widget.NewButton("Back",func (){
-            myWindow.SetContent(makeLoginRegisterScreen(dbConn,myWindow))
-        }),
+    registerLink := widget.NewHyperlink("Not a member? Register here", nil)
+    registerLink.OnTapped = func() {
+        myWindow.SetContent(makeRegisterScreen(dbConn, myWindow))
+    }
+
+    inputContainer := container.NewVBox(
+        container.NewPadded(usernameEntry),
+        container.NewPadded(passwordEntry),
+        container.NewPadded(loginButton),
     )
+
+    return container.NewGridWithColumns(3,
+        layout.NewSpacer(),
+        container.NewVBox(logo, inputContainer, registerLink),
+        layout.NewSpacer(),
+    )
+}
+
+func checkIfPathExists(path string) bool {
+    _, err := os.Stat(path)
+    return !os.IsNotExist(err)
 }
 
 func makeRegisterScreen(dbConn *sql.DB, myWindow fyne.Window) fyne.CanvasObject {
 
+    logo := canvas.NewImageFromFile("/Users/ardairmak/school/cse439/secure-file-vault/assets/logoText.png")
+    logo.SetMinSize(fyne.NewSize(300, 200))
+    logo.FillMode = canvas.ImageFillContain
+
     usernameEntry := widget.NewEntry()
-    usernameEntry.SetPlaceHolder("Enter username...")
+    usernameEntry.SetPlaceHolder("Username")
 
     passwordEntry := widget.NewPasswordEntry()
-    passwordEntry.SetPlaceHolder("Enter password...")
+    passwordEntry.SetPlaceHolder("Password")
 
     vaultPathEntry := widget.NewEntry()
-    vaultPathEntry.SetPlaceHolder("Enter vault path...")
+    vaultPathEntry.SetPlaceHolder("Vault Path (empty for default)")
 
     vaultPathEntry.SetText("")
 
     selectPathButton := widget.NewButton("Select Custom Vault Path", func() {
         dialog.ShowFolderOpen(func(uri fyne.ListableURI, err error) {
             if uri != nil {
-                vaultPathEntry.SetText(uri.Path() + "/vault.dat")
+
+                vaultPath := filepath.Join(uri.Path(),usernameEntry.Text+"_vault.dat")
+                
+                if checkIfPathExists(vaultPath) {
+                    fyne.CurrentApp().SendNotification(&fyne.Notification{
+                        Title:   "Error",
+                        Content: "The selected vault path already exists. Please choose a different path.",
+                    })
+                    return
+                }
+
+                vaultPathEntry.SetText(vaultPath)
             }
         }, myWindow)
     })
@@ -134,16 +191,9 @@ func makeRegisterScreen(dbConn *sql.DB, myWindow fyne.Window) fyne.CanvasObject 
         vaultPath := vaultPathEntry.Text
 
         if vaultPath == "" {
-            homeDir, err := os.UserHomeDir()
-            if err != nil {
-                fyne.CurrentApp().SendNotification(&fyne.Notification{
-                    Title:   "Error",
-                    Content: err.Error(),
-                })
-                return
+            //make default path inside the vaults dir
+            vaultPath = filepath.Join("vaults", username, "vault.dat")
         }
-        vaultPath = filepath.Join(homeDir,username, "vault.dat")
-    }
 
         vaultDir := filepath.Dir(vaultPath)
         err := os.MkdirAll(vaultDir, os.ModePerm)
@@ -178,32 +228,44 @@ func makeRegisterScreen(dbConn *sql.DB, myWindow fyne.Window) fyne.CanvasObject 
             Title:   "Success",
             Content: "User registered successfully",
         })
-        myWindow.SetContent(makeLoginRegisterScreen(dbConn, myWindow))
     })
-    return container.NewVBox(
-        widget.NewLabel("Username"),
-        usernameEntry,
-        widget.NewLabel("Password"),
-        passwordEntry,
-        widget.NewLabel("Vault Path"),
-        vaultPathEntry,
-        selectPathButton,
-        registerButton,
-        widget.NewButton("Back", func() {
-            myWindow.SetContent(makeLoginRegisterScreen(dbConn, myWindow))
-        }),
+        
+        loginLink := widget.NewHyperlink("Already a member? Login here.", nil)
+        loginLink.OnTapped = func() {
+            myWindow.SetContent(makeLoginScreen(dbConn, myWindow))
+        }
+
+    inputContainer := container.NewVBox(
+        container.NewPadded(usernameEntry),
+        container.NewPadded(passwordEntry),
+        container.NewPadded(vaultPathEntry),
+        container.NewPadded(selectPathButton),
+        container.NewPadded(registerButton),
+    )
+    
+    return container.NewGridWithColumns(3,
+        layout.NewSpacer(),
+        container.NewVBox(logo, inputContainer, loginLink),
+        layout.NewSpacer(),
     )
 }
 
-func makeMainScreen(dbConn *sql.DB, myWindow fyne.Window, vaultPath string) fyne.CanvasObject {
+func makeMainScreen(dbConn *sql.DB, myWindow fyne.Window, vaultPath, username string) fyne.CanvasObject {
 
-    vaultStatus := widget.NewLabel("Vault Unlocked")
+    logo := canvas.NewImageFromFile("/Users/ardairmak/school/cse439/secure-file-vault/assets/logoText.png")
+    logo.SetMinSize(fyne.NewSize(150, 200))
+    logo.FillMode = canvas.ImageFillContain
+    
+    vaultStatus := canvas.NewText("Vault Status: Unlocked", color.RGBA{R: 0, G: 128, B: 0, A: 255})
+    vaultStatus.TextStyle = fyne.TextStyle{Bold: true}
+    vaultStatusContainer := container.NewHBox(container.NewPadded(vaultStatus))
+
+    usernameLabel := widget.NewLabelWithStyle(fmt.Sprintf("Logged in as: %s", username), fyne.TextAlignTrailing, fyne.TextStyle{Bold: true})
+    usernameLabel.Alignment = fyne.TextAlignTrailing
+    usernameLabelContainer := container.NewHBox(layout.NewSpacer(), usernameLabel)
 
     fileEntry := widget.NewEntry()
     fileEntry.SetPlaceHolder("Enter file path...")
-
-    outputPathEntry := widget.NewEntry()
-    outputPathEntry.SetPlaceHolder("Enter output path...")
 
     selectFileButton := widget.NewButton("Select File", func() {
         dialog.ShowFileOpen(func(uri fyne.URIReadCloser, err error) {
@@ -261,20 +323,38 @@ func makeMainScreen(dbConn *sql.DB, myWindow fyne.Window, vaultPath string) fyne
         myWindow.SetContent(loginScreen)
     })
 
-    form := container.NewVBox(
-        vaultStatus,
-        selectFileButton,
-        widget.NewLabel("File Path"),
+    inputContainer := container.NewVBox(
         fileEntry,
-        widget.NewLabel("Output Path"),
-        outputPathEntry,
-        addFileButton,
-        widget.NewLabel("Files in Vault"),
+        container.NewGridWithColumns(2,
+            selectFileButton,
+            addFileButton,
+        ),
+    )
+
+    buttonContainer := container.NewVBox(
         viewFilesButton,
         logoutButton,
     )
 
-    return form
+    form := container.NewVBox(
+        logo,
+        inputContainer,
+        buttonContainer,
+    )
+
+    header := container.NewGridWithColumns(3,
+        vaultStatusContainer,
+        layout.NewSpacer(),
+        usernameLabelContainer,
+    )
+
+    return container.NewVBox(
+        header,
+        container.NewGridWithColumns(3,
+            layout.NewSpacer(),
+            form,
+            layout.NewSpacer(),
+    ))
 }
 
 func showFilesWindow(vaultPath string) {
@@ -294,7 +374,14 @@ func showFilesWindow(vaultPath string) {
             if err == nil && uri != nil {
                 outputDir := uri.Path()
 
-                for _, fileItem := range *selectedItems {
+                progressBar := widget.NewProgressBarInfinite()
+                progressDialog := dialog.NewCustomWithoutButtons("Extracting Files", progressBar, filesWindow)
+                progressDialog.Show()
+
+                go func() {
+                    defer progressDialog.Hide()
+
+                    for _, fileItem := range *selectedItems {
                     outputPath := filepath.Join(outputDir, fileItem.Name)
                     data, err := currentVault.ExtractFile(fileItem.Name, vaultKey,outputPath)
                     if err != nil {
@@ -314,7 +401,6 @@ func showFilesWindow(vaultPath string) {
                         return 
                     }
                 }
-
                 fyne.CurrentApp().SendNotification(&fyne.Notification{
                     Title:   "Success",
                     Content: "Files extracted successfully",
@@ -324,6 +410,7 @@ func showFilesWindow(vaultPath string) {
 
                 fileList.Refresh()
                 filesWindow.Content().Refresh()
+                }()
             }
         }, filesWindow)
     })
@@ -372,6 +459,7 @@ func showFilesWindow(vaultPath string) {
 
     filesWindow.SetContent(filesContainer)
     filesWindow.Resize(fyne.NewSize(500,400))
+    filesWindow.CenterOnScreen()
     filesWindow.Show()
 }
 
