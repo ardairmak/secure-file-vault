@@ -1,2 +1,2 @@
 vault.db
-vaults/
+vaults/(.*)/vault.db
