@@ -24,6 +24,11 @@ var currentVault *vault.Vault
 var vaultKey []byte
 
 func RunApp(dbPath string) {
+    
+    currentDir, err := os.Getwd()
+    if err != nil {
+        panic(fmt.Sprintf("Failed to get current directory: %v", err))
+    }
 
     dbConn, err := db.InitDB(dbPath)
     if err != nil {
@@ -34,13 +39,13 @@ func RunApp(dbPath string) {
     myApp := app.New()
     myWindow := myApp.NewWindow("Secure File Vault")
 
-    iconPath := filepath.Join("/Users/ardairmak/school/cse439/secure-file-vault/assets/", "logo.png")
+    iconPath := filepath.Join("./assets", "logo.png")
     appIcon := canvas.NewImageFromFile(iconPath)
     myApp.SetIcon(appIcon.Resource)
 
     var frames []*canvas.Image
     for i := 1; i <= 42; i++ {
-        framePath := filepath.Join("/Users/ardairmak/school/cse439/secure-file-vault/assets/gif/", fmt.Sprintf("frame_apngframe%d.png", i))
+        framePath := filepath.Join(currentDir,"/assets/gif", fmt.Sprintf("frame_apngframe%d.png", i))
         frame := canvas.NewImageFromFile(framePath)
         frame.FillMode = canvas.ImageFillContain
         frames = append(frames, frame)
@@ -77,7 +82,7 @@ func RunApp(dbPath string) {
 
 func makeLoginScreen(dbConn *sql.DB, myWindow fyne.Window) fyne.CanvasObject {
 
-    logo := canvas.NewImageFromFile("/Users/ardairmak/school/cse439/secure-file-vault/assets/logoText.png")
+    logo := canvas.NewImageFromFile("./assets/logoText.png")
     logo.SetMinSize(fyne.NewSize(300, 200))
     logo.FillMode = canvas.ImageFillContain
 
@@ -150,7 +155,7 @@ func checkIfPathExists(path string) bool {
 
 func makeRegisterScreen(dbConn *sql.DB, myWindow fyne.Window) fyne.CanvasObject {
 
-    logo := canvas.NewImageFromFile("/Users/ardairmak/school/cse439/secure-file-vault/assets/logoText.png")
+    logo := canvas.NewImageFromFile("./assets/logoText.png")
     logo.SetMinSize(fyne.NewSize(300, 200))
     logo.FillMode = canvas.ImageFillContain
 
@@ -254,7 +259,7 @@ func makeRegisterScreen(dbConn *sql.DB, myWindow fyne.Window) fyne.CanvasObject 
 
 func makeMainScreen(dbConn *sql.DB, myWindow fyne.Window, vaultPath, username string) fyne.CanvasObject {
 
-    logo := canvas.NewImageFromFile("/Users/ardairmak/school/cse439/secure-file-vault/assets/logoText.png")
+    logo := canvas.NewImageFromFile("./assets/logoText.png")
     logo.SetMinSize(fyne.NewSize(150, 200))
     logo.FillMode = canvas.ImageFillContain
     
