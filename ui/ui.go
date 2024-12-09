@@ -228,6 +228,8 @@ func makeRegisterScreen(dbConn *sql.DB, myWindow fyne.Window) fyne.CanvasObject 
             Title:   "Success",
             Content: "User registered successfully",
         })
+
+        myWindow.SetContent(makeMainScreen(dbConn, myWindow, vaultPath, username))
     })
         
         loginLink := widget.NewHyperlink("Already a member? Login here.", nil)
