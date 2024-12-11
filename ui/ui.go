@@ -226,6 +226,17 @@ func makeRegisterScreen(dbConn *sql.DB, myWindow fyne.Window) fyne.CanvasObject 
             return
         }
 
+        vlt, key, err := vault.OpenVault(vaultPath, password)
+        if err != nil {
+            fyne.CurrentApp().SendNotification(&fyne.Notification{
+                Title:   "Error",
+                Content: fmt.Sprintf("Failed to open vault: %v", err),
+            })
+            return
+        }
+        currentVault = vlt
+        vaultKey = key
+
         fyne.CurrentApp().SendNotification(&fyne.Notification{
             Title:   "Success",
             Content: "User registered successfully",
