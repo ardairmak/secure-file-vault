@@ -429,7 +429,7 @@ func showFilesWindow(vaultPath string) {
     }
     
         for _, fileItem := range *selectedItems {
-            err := currentVault.RemoveFile(fileItem.Name)
+            err := currentVault.RemoveFile(fileItem.Name,vaultKey)
             if err != nil {
                 fyne.CurrentApp().SendNotification(&fyne.Notification{
                     Title:   "Error",
@@ -473,7 +473,15 @@ func makeFileListContent() (fyne.CanvasObject, *[]vault.FileEntry) {
 
     fileList := widget.NewList(
         func() int {
-            return len(currentVault.ListFiles())
+            files, err := currentVault.ListFiles(vaultKey)
+            if err != nil {
+                fyne.CurrentApp().SendNotification(&fyne.Notification{
+                    Title:   "Error",
+                    Content: err.Error(),
+                })
+                return 0
+            }
+            return len(files)
         },
         func() fyne.CanvasObject {
             return container.NewHBox(
@@ -483,7 +491,14 @@ func makeFileListContent() (fyne.CanvasObject, *[]vault.FileEntry) {
         },
 
         func(i widget.ListItemID, o fyne.CanvasObject) {
-            files := currentVault.ListFiles()
+            files, err := currentVault.ListFiles(vaultKey)
+            if err != nil {
+                fyne.CurrentApp().SendNotification(&fyne.Notification{
+                    Title:   "Error",
+                    Content: err.Error(),
+                })
+                return
+            }
             fileItem := files[i]
 
             check := o.(*fyne.Container).Objects[0].(*widget.Check)

@@ -97,10 +97,15 @@ func (vault *Vault) AddFile(filePath string, data []byte, key []byte) error {
     if err != nil {
         return err
     }
+    encryptedFileName, err := EncryptFileName(key, filePath)
+    if err != nil {
+        return err
+    }
+    
     fileHash := HashData(data)
 
     FileEntry := FileEntry{
-        Name: filePath,
+        Name: encryptedFileName,
         Hash: fileHash,
         Data: encryptedData,
     }
@@ -125,13 +130,31 @@ func (vault *Vault) Save(vaultPath string) error {
     return nil
 }
 
-func (vault *Vault) ListFiles() []FileEntry {
-    return vault.Files
+func (vault *Vault) ListFiles(key []byte) ([]FileEntry, error) {
+    var decryptedFiles []FileEntry
+    for _, file := range vault.Files {
+        decryptedFileName, err := DecryptFileName(key, file.Name)
+        if err != nil {
+            return nil, err
+        }
+        decryptedFiles = append(decryptedFiles, FileEntry{
+            Name: decryptedFileName,
+            Hash: file.Hash,
+            Data: file.Data,
+        })
+    }
+    return decryptedFiles, nil
 }
 
-func (vault *Vault) RemoveFile(filePath string) error {
+func (vault *Vault) RemoveFile(filePath string, key []byte) error {
     for i, file := range vault.Files {
-        if file.Name == filePath {
+
+        decryptedFileName, err := DecryptFileName(key, file.Name)
+        if err != nil {
+            return err
+        }
+
+        if decryptedFileName == filePath {
             vault.Files = append(vault.Files[:i], vault.Files[i+1:]...)
             return nil
         }

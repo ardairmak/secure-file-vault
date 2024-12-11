@@ -23,6 +23,26 @@ func GenerateSalt() ([]byte,error){
     return salt, err
 }
 
+func EncryptFileName(key []byte, fileName string) (string, error) {
+    encryptedFileName, err := EncryptData(key, []byte(fileName))
+    if err != nil {
+        return "", err
+    }
+    return base64.StdEncoding.EncodeToString(encryptedFileName), nil
+}
+
+func DecryptFileName(key []byte, encryptedFileName string) (string, error) {
+    encryptedFileNameBytes, err := base64.StdEncoding.DecodeString(encryptedFileName)
+    if err != nil {
+        return "", err
+    }
+    decryptedFileName, err := DecryptData(key, encryptedFileNameBytes)
+    if err != nil {
+        return "", err
+    }
+    return string(decryptedFileName), nil
+}
+
 func EncryptData(key, plaintext []byte) ([]byte, error) {
     
     block, err := aes.NewCipher(key)
