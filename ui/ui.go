@@ -25,11 +25,6 @@ var vaultKey []byte
 
 func RunApp(dbPath string) {
     
-    currentDir, err := os.Getwd()
-    if err != nil {
-        panic(fmt.Sprintf("Failed to get current directory: %v", err))
-    }
-
     dbConn, err := db.InitDB(dbPath)
     if err != nil {
         panic(fmt.Sprintf("Failed to initialize the database: %v", err))
@@ -39,17 +34,19 @@ func RunApp(dbPath string) {
     myApp := app.New()
     myWindow := myApp.NewWindow("Secure File Vault")
 
-    iconPath := filepath.Join("./assets", "logo.png")
-    appIcon := canvas.NewImageFromFile(iconPath)
-    myApp.SetIcon(appIcon.Resource)
-
     var frames []*canvas.Image
     for i := 1; i <= 42; i++ {
-        framePath := filepath.Join(currentDir,"/assets/gif", fmt.Sprintf("frame_apngframe%d.png", i))
-        frame := canvas.NewImageFromFile(framePath)
+        resourceName := fmt.Sprintf("frame_apngframe%d_png", i)
+        frameResource := Resources[resourceName]
+        if frameResource == nil {
+            panic(fmt.Sprintf("Resource %s not found", resourceName))
+        }
+
+        frame := canvas.NewImageFromResource(frameResource)
         frame.FillMode = canvas.ImageFillContain
         frames = append(frames, frame)
     }
+    
 
     animationContainer := container.NewStack(frames[0])
     myWindow.SetContent(animationContainer)
@@ -82,7 +79,7 @@ func RunApp(dbPath string) {
 
 func makeLoginScreen(dbConn *sql.DB, myWindow fyne.Window) fyne.CanvasObject {
 
-    logo := canvas.NewImageFromFile("./assets/logoText.png")
+    logo := canvas.NewImageFromResource(Resources["logoText_png"])
     logo.SetMinSize(fyne.NewSize(300, 200))
     logo.FillMode = canvas.ImageFillContain
 
@@ -155,7 +152,7 @@ func checkIfPathExists(path string) bool {
 
 func makeRegisterScreen(dbConn *sql.DB, myWindow fyne.Window) fyne.CanvasObject {
 
-    logo := canvas.NewImageFromFile("./assets/logoText.png")
+    logo := canvas.NewImageFromResource(Resources["logoText_png"])
     logo.SetMinSize(fyne.NewSize(300, 200))
     logo.FillMode = canvas.ImageFillContain
 
@@ -259,7 +256,7 @@ func makeRegisterScreen(dbConn *sql.DB, myWindow fyne.Window) fyne.CanvasObject 
 
 func makeMainScreen(dbConn *sql.DB, myWindow fyne.Window, vaultPath, username string) fyne.CanvasObject {
 
-    logo := canvas.NewImageFromFile("./assets/logoText.png")
+    logo := canvas.NewImageFromResource(Resources["logoText_png"])
     logo.SetMinSize(fyne.NewSize(150, 200))
     logo.FillMode = canvas.ImageFillContain
     
@@ -391,13 +388,11 @@ func showFilesWindow(vaultPath string) {
                     for _, fileItem := range *selectedItems {
                     outputPath := filepath.Join(outputDir, fileItem.Name)
                     data, err := currentVault.ExtractFile(fileItem.Name, vaultKey,outputPath)
-                    // if multiple files are selected and one of them fails to extract, rest are not extracted!!
                     if err != nil {
                         fyne.CurrentApp().SendNotification(&fyne.Notification{
                             Title:   "Error",
                             Content: err.Error(),
                         })
-                        //return
                         continue
                     }
 
@@ -407,7 +402,6 @@ func showFilesWindow(vaultPath string) {
                             Title:   "Error",
                             Content: err.Error(),
                         })
-                        //return
                         continue 
                     }
                 }
@@ -516,3 +510,4 @@ func makeFileListContent() (fyne.CanvasObject, *[]vault.FileEntry) {
 
     return fileList, selectedItems
 }
+
