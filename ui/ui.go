@@ -391,12 +391,14 @@ func showFilesWindow(vaultPath string) {
                     for _, fileItem := range *selectedItems {
                     outputPath := filepath.Join(outputDir, fileItem.Name)
                     data, err := currentVault.ExtractFile(fileItem.Name, vaultKey,outputPath)
+                    // if multiple files are selected and one of them fails to extract, rest are not extracted!!
                     if err != nil {
                         fyne.CurrentApp().SendNotification(&fyne.Notification{
                             Title:   "Error",
                             Content: err.Error(),
                         })
-                        return
+                        //return
+                        continue
                     }
 
                     err = os.WriteFile(outputPath, data, 0644)
@@ -405,7 +407,8 @@ func showFilesWindow(vaultPath string) {
                             Title:   "Error",
                             Content: err.Error(),
                         })
-                        return 
+                        //return
+                        continue 
                     }
                 }
                 fyne.CurrentApp().SendNotification(&fyne.Notification{
