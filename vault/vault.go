@@ -165,7 +165,12 @@ func (vault *Vault) RemoveFile(filePath string, key []byte) error {
 
 func (vault *Vault) ExtractFile(filePath string, key []byte, outputhPath string) ([]byte, error) {
     for _, file := range vault.Files {
-        if file.Name == filePath {
+        decryptedFileName, err := DecryptFileName(key, file.Name)
+        if err != nil {
+            return nil, err
+        }
+
+        if decryptedFileName == filePath {
             
             decryptedData, err := DecryptData(key, file.Data)
             if err != nil {
