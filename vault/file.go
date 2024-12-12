@@ -1,7 +1,7 @@
 package vault
 
 type FileEntry struct {
-    Name string
-    Hash string
-    Data []byte
+	Name string
+	Hash string
+	Data []byte
 }

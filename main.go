@@ -5,7 +5,5 @@ import (
 )
 
 func main() {
-    ui.RunApp("vault.db")
+	ui.RunApp("vault.db")
 }
-
-
