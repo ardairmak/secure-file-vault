@@ -1,1 +1,21 @@
+# Binaries
+secure-file-vault.app
+
+# Build artifacts
+*.exe
+*.dll
+*.so
+*.dylib
+
+# Database files
 vault.db
+
+# Vaults
+vaults/
+
+# OS-specific files
+.DS_Store
+Thumbs.db
+
+# Fyne bundle files
+ui/bundled.go

@@ -1,11 +1,9 @@
 package main
 
 import (
-    "secure-file-vault/ui"
+	"secure-file-vault/ui"
 )
 
 func main() {
-    ui.RunApp("vault.db")
+	ui.RunApp("vault.db")
 }
-
-
