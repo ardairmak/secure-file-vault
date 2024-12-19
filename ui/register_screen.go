@@ -11,7 +11,6 @@ import (
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/canvas"
 	"fyne.io/fyne/v2/container"
-	"fyne.io/fyne/v2/dialog"
 	"fyne.io/fyne/v2/layout"
 	"fyne.io/fyne/v2/widget"
 )
@@ -28,33 +27,11 @@ func makeRegisterScreen(dbConn *sql.DB, myWindow fyne.Window) fyne.CanvasObject 
 	passwordEntry := widget.NewPasswordEntry()
 	passwordEntry.SetPlaceHolder("Password")
 
-	vaultPathEntry := widget.NewEntry()
-	vaultPathEntry.SetPlaceHolder("Vault Path (empty for default)")
-	vaultPathEntry.SetText("")
-
-	selectPathButton := widget.NewButton("Select Custom Vault Path", func() {
-		dialog.ShowFolderOpen(func(uri fyne.ListableURI, err error) {
-			if uri != nil {
-				vaultPath := filepath.Join(uri.Path(), usernameEntry.Text+"_vault.dat")
-
-				if _, err := os.Stat(vaultPath); !os.IsNotExist(err) {
-					showErrorNotification("Vault already exists")
-					return
-				}
-
-				vaultPathEntry.SetText(vaultPath)
-			}
-		}, myWindow)
-	})
-
 	registerButton := widget.NewButton("Register", func() {
 		username := usernameEntry.Text
 		password := passwordEntry.Text
-		vaultPath := vaultPathEntry.Text
 
-		if vaultPath == "" {
-			vaultPath = filepath.Join("vaults", username, "vault.dat")
-		}
+		vaultPath := filepath.Join("vaults", username, "vault.dat")
 
 		if _, err := os.Stat(vaultPath); !os.IsNotExist(err) {
 			showErrorNotification("Vault already exists")
@@ -68,7 +45,7 @@ func makeRegisterScreen(dbConn *sql.DB, myWindow fyne.Window) fyne.CanvasObject 
 			return
 		}
 
-		err = db.RegisterUser(dbConn, username, password, vaultPath)
+		err = db.RegisterUser(dbConn, username, password)
 		if err != nil {
 			showErrorNotification(fmt.Sprintf("Failed to register user: %v", err))
 			return
@@ -89,7 +66,7 @@ func makeRegisterScreen(dbConn *sql.DB, myWindow fyne.Window) fyne.CanvasObject 
 		vaultKey = key
 
 		showSuccessNotification("User registered successfully")
-		myWindow.SetContent(makeMainScreen(dbConn, myWindow, vaultPath, username))
+		myWindow.SetContent(makeMainScreen(dbConn, myWindow, username))
 	})
 
 	loginLink := widget.NewHyperlink("Already a member? Login here.", nil)
@@ -100,8 +77,6 @@ func makeRegisterScreen(dbConn *sql.DB, myWindow fyne.Window) fyne.CanvasObject 
 	inputContainer := container.NewVBox(
 		container.NewPadded(usernameEntry),
 		container.NewPadded(passwordEntry),
-		container.NewPadded(vaultPathEntry),
-		container.NewPadded(selectPathButton),
 		container.NewPadded(registerButton),
 	)
 

@@ -15,11 +15,13 @@ import (
 	"fyne.io/fyne/v2/widget"
 )
 
-func makeMainScreen(dbConn *sql.DB, myWindow fyne.Window, vaultPath, username string) fyne.CanvasObject {
+func makeMainScreen(dbConn *sql.DB, myWindow fyne.Window, username string) fyne.CanvasObject {
 
 	logo := canvas.NewImageFromResource(Resources["logoText_png"])
 	logo.SetMinSize(fyne.NewSize(150, 200))
 	logo.FillMode = canvas.ImageFillContain
+
+	vaultPath := filepath.Join("vaults", username, "vault.dat")
 
 	vaultStatus := canvas.NewText("Vault Status: Unlocked", color.RGBA{R: 0, G: 128, B: 0, A: 255})
 	vaultStatus.TextStyle = fyne.TextStyle{Bold: true}
@@ -48,7 +50,7 @@ func makeMainScreen(dbConn *sql.DB, myWindow fyne.Window, vaultPath, username st
 			return
 		}
 
-		err = currentVault.AddFile(filepath.Base(filePath), data, vaultKey)
+		err = currentVault.AddFile(filePath, vaultPath, data, vaultKey)
 		if err != nil {
 			showErrorNotification(err.Error())
 			return

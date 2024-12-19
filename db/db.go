@@ -31,36 +31,35 @@ func CreateUsersTable(db *sql.DB) error {
 	createTableSQL := `CREATE TABLE IF NOT EXISTS users (
     "id" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
     "username" TEXT UNIQUE NOT NULL,
-    "password_hash" TEXT NOT NULL,
-    "vault_path" TEXT NOT NULL
+    "password_hash" TEXT NOT NULL
     );`
 	_, err := db.Exec(createTableSQL)
 	return err
 }
 
-func RegisterUser(db *sql.DB, username, password, vaultPath string) error {
+func RegisterUser(db *sql.DB, username, password string) error {
 	passwordHash, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
 	if err != nil {
 		return err
 	}
 
-	_, err = db.Exec("INSERT INTO users (username, password_hash, vault_path) VALUES (?, ?, ?)", username, passwordHash, vaultPath)
+	_, err = db.Exec("INSERT INTO users (username, password_hash) VALUES (?, ?)", username, passwordHash)
 	return err
 }
 
-func AuthenticateUser(db *sql.DB, username, password string) (string, error) {
-	var passwordHash, vaultPath string
-	err := db.QueryRow("SELECT password_hash, vault_path FROM users WHERE username = ?", username).Scan(&passwordHash, &vaultPath)
+func AuthenticateUser(db *sql.DB, username, password string) error {
+	var passwordHash string
+	err := db.QueryRow("SELECT password_hash FROM users WHERE username = ?", username).Scan(&passwordHash)
 	if err != nil {
-		return "", err
+		return err
 	}
 
 	err = bcrypt.CompareHashAndPassword([]byte(passwordHash), []byte(password))
 	if err != nil {
-		return "", errors.New("invalid password")
+		return errors.New("invalid password")
 	}
 
-	return vaultPath, nil
+	return nil
 }
 
 func AddVault(db *sql.DB, vaultPath, salt, keyHash string) error {

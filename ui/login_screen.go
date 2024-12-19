@@ -29,9 +29,7 @@ func makeLoginScreen(dbConn *sql.DB, myWindow fyne.Window) fyne.CanvasObject {
 		username := usernameEntry.Text
 		password := passwordEntry.Text
 
-		vaultPath := filepath.Join("vaults", username, "vault.dat")
-
-		vaultPathFromDB, err := db.AuthenticateUser(dbConn, username, password)
+		err := db.AuthenticateUser(dbConn, username, password)
 		if err != nil {
 			fyne.CurrentApp().SendNotification(&fyne.Notification{
 				Title:   "Error",
@@ -40,13 +38,7 @@ func makeLoginScreen(dbConn *sql.DB, myWindow fyne.Window) fyne.CanvasObject {
 			return
 		}
 
-		if vaultPathFromDB != vaultPath {
-			fyne.CurrentApp().SendNotification(&fyne.Notification{
-				Title:   "Error",
-				Content: "Invalid vault path",
-			})
-			return
-		}
+		vaultPath := filepath.Join("vaults", username, "vault.dat")
 
 		vlt, key, err := vault.OpenVault(vaultPath, password)
 		if err != nil {
@@ -58,7 +50,7 @@ func makeLoginScreen(dbConn *sql.DB, myWindow fyne.Window) fyne.CanvasObject {
 		}
 		currentVault = vlt
 		vaultKey = key
-		mainScreen := makeMainScreen(dbConn, myWindow, vaultPath, username)
+		mainScreen := makeMainScreen(dbConn, myWindow, username)
 		myWindow.SetContent(mainScreen)
 	})
 	loginButton.Resize(fyne.NewSize(200, 40))
