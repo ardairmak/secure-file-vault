@@ -83,10 +83,29 @@ func OpenVault(vaultPath, password string) (*Vault, []byte, error) {
 	return &vault, key, nil
 }
 
-func (vault *Vault) AddFile(filePath string, data []byte, key []byte) error {
+func (vault *Vault) AddFile(filePath, vaultPath string, data []byte, key []byte) error {
+	//deny trying to add vault to itself
+	absFilePath, err := filepath.Abs(filePath)
+	if err != nil {
+		return fmt.Errorf("failed to get absolute path: %v", err)
+	}
+	absVaultPath, err := filepath.Abs(vaultPath)
+	if err != nil {
+		return fmt.Errorf("failed to get absolute path: %v", err)
+	}
+	if absFilePath == absVaultPath {
+		return fmt.Errorf("vault file cannot be added to itself")
+	}
+
 	//check for duplicate file
+	baseFileName := filepath.Base(filePath)
 	for _, file := range vault.Files {
-		if file.Name == filePath {
+		decryptedFileName, err := DecryptFileName(key, file.Name)
+		if err != nil {
+			return fmt.Errorf("failed to decrypt filename: %v", err)
+		}
+
+		if decryptedFileName == baseFileName {
 			return fmt.Errorf("file already exists")
 		}
 	}
@@ -95,7 +114,7 @@ func (vault *Vault) AddFile(filePath string, data []byte, key []byte) error {
 	if err != nil {
 		return err
 	}
-	encryptedFileName, err := EncryptFileName(key, filePath)
+	encryptedFileName, err := EncryptFileName(key, baseFileName)
 	if err != nil {
 		return err
 	}
@@ -177,6 +196,10 @@ func (vault *Vault) ExtractFile(filePath string, key []byte, outputPath string) 
 			decryptedFileHash := HashData(decryptedData)
 			if decryptedFileHash != file.Hash {
 				return nil, fmt.Errorf("file integrity check failed for %s", filePath)
+			}
+			//check if the file with the same name already exists in the extract path
+			if _, err := os.Stat(outputPath); err == nil {
+				return nil, fmt.Errorf("file already exists at the extract path")
 			}
 
 			err = os.WriteFile(outputPath, decryptedData, 0644)
